@@ -87,6 +87,48 @@ def ai_sustainability_assessment(material, weight, recyclable, renewable):
     ]
     return ask_groq(messages)
 
+# --- Carbon Footprint Estimator ---
+def estimate_carbon_footprint(material, weight, distance):
+    # Example emission factors (kg CO2e per kg material, and per ton-km for transport)
+    material_factors = {
+        "Plastic": 2.5,
+        "Glass": 1.2,
+        "Aluminum": 10.0,
+        "Paper": 1.0,
+        "Bioplastic": 1.5,
+        "Compostable": 1.2,
+        "Other": 2.0
+    }
+    transport_factor = 0.1 / 1000  # 0.1 kg CO2e per ton-km, converted to per gram-km
+
+    material_factor = material_factors.get(material, 2.0)
+    # Convert grams to kg for material emissions
+    material_emissions = (weight / 1000) * material_factor
+    # Transport emissions: weight in grams * distance in km * transport_factor
+    transport_emissions = weight * distance * transport_factor
+    total_emissions = material_emissions + transport_emissions
+    return material_emissions, transport_emissions, total_emissions
+
+def carbon_footprint_tab():
+    st.subheader("🌍 Carbon Footprint Estimator")
+    st.markdown("Estimate the carbon footprint of your packaging based on material, weight, and transport distance.")
+
+    material = st.selectbox("Material Type", ["Plastic", "Glass", "Aluminum", "Paper", "Bioplastic", "Compostable", "Other"], key="cf_material")
+    weight = st.number_input("Weight (grams)", min_value=0.0, step=0.1, key="cf_weight")
+    distance = st.number_input("Transport Distance (km)", min_value=0.0, step=0.1, key="cf_distance")
+
+    if st.button("🌱 Estimate Carbon Footprint"):
+        material_em, transport_em, total_em = estimate_carbon_footprint(material, weight, distance)
+        st.markdown("### 🧮 Carbon Footprint Results")
+        st.markdown(f"""
+        <div class='result-box'>
+        <b>Material Emissions:</b> {material_em:.3f} kg CO₂e<br>
+        <b>Transport Emissions:</b> {transport_em:.3f} kg CO₂e<br>
+        <b>Total Estimated Emissions:</b> <span style="color:#66bb6a;font-size:1.2em">{total_em:.3f} kg CO₂e</span>
+        </div>
+        """, unsafe_allow_html=True)
+        st.info("Emission factors are approximate and for demonstration only.")
+
 def main():
     st.set_page_config(
         page_title="Sustainability Packaging Chatbot",
@@ -106,41 +148,43 @@ def main():
         }
         .sub-header {
             font-size: 1.25rem;
-            background: rgba(102, 187, 106, 0.15);  /* Subtle green tint */
+            background: rgba(102, 187, 106, 0.15);
             padding: 16px 24px;
-            border-left: 5px solid #66bb6a;  /* Leafy green border */
+            border-left: 5px solid #66bb6a;
             margin-bottom: 24px;
             border-radius: 10px;
-            color: #e8f5e9;  /* Light mint text for dark background */
+            color: #1b5e20;
             font-weight: 600;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(3px); /* subtle glass effect */
+            backdrop-filter: blur(3px);
             transition: all 0.3s ease;
         }
-
         .chat-box{
             background-color: #ffffff;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
-                
         .result-box {
-            background-color: #1e1e1e;  /* deeper dark for contrast */
-            color: #f5f5f5;             /* bright text */
+            background-color: #1e1e1e;
+            color: #f5f5f5;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             line-height: 1.6;
             font-size: 1.05rem;
         }
-
     </style>
     <h1 class='main-title'>🌱 Sustainability Packaging Chatbot</h1>
     <div class='sub-header'>Expert insights on LCA, ESG reporting, and packaging sustainability</div>
     """, unsafe_allow_html=True)
 
-    tab1, tab2, tab3 = st.tabs(["💬 Chat", "📄 ESG Report Analyzer", "♻️ Score Calculator"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "💬 Chat",
+        "📄 ESG Report Analyzer",
+        "♻️ Score Calculator",
+        "🌍 Carbon Footprint Estimator"
+    ])
 
     with st.sidebar:
         st.header("📘 About")
@@ -151,7 +195,6 @@ def main():
         - ♻️ Sustainable packaging
         - 📋 Materiality analysis
         """)
-
         if st.button("🧹 Clear Chat"):
             st.session_state.messages = []
             st.rerun()
@@ -225,6 +268,9 @@ def main():
                     st.markdown(f"<div class='result-box'>{result}</div>", unsafe_allow_html=True)
                 else:
                     st.error("AI could not generate a response.")
+
+    with tab4:
+        carbon_footprint_tab()
 
 if __name__ == "__main__":
     main()
