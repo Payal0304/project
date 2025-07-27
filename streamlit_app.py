@@ -3,6 +3,9 @@ import requests
 import os
 from dotenv import load_dotenv
 import PyPDF2
+from groq import Groq
+import base64
+import tempfile
 
 # Load environment variables
 load_dotenv()
@@ -17,6 +20,36 @@ SYSTEM_PROMPT = (
     "and materiality analysis for packaging. Answer user questions as an industry authority, using up-to-date standards, real-world examples, and "
     "clear explanations tailored to packaging solutions."
 )
+
+# Function to encode the image
+def encode_image(image_path):
+  with open(image_path, "rb") as image_file:
+    return base64.b64encode(image_file.read()).decode('utf-8')
+
+
+
+
+def upload_file_to_groq(file_path):
+    url = "https://api.groq.com/openai/v1/files"
+    api_key = GROQ_API_KEY
+    headers = {
+        "Authorization": f"Bearer {api_key}"
+    }
+
+    # Prepare the file and form data
+    files = {
+        "file": ("batch_file.jsonl", open(file_path, "rb"))
+    }
+
+    data = {
+        "purpose": "batch"
+    }
+
+    # Make the POST request
+    response = requests.post(url, headers=headers, files=files, data=data)
+
+    return response.json()
+
 
 def ask_groq(messages):
     headers = {
@@ -159,12 +192,6 @@ def main():
             backdrop-filter: blur(3px);
             transition: all 0.3s ease;
         }
-        .chat-box{
-            background-color: #ffffff;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
         .result-box {
             background-color: #1e1e1e;
             color: #f5f5f5;
@@ -174,16 +201,23 @@ def main():
             line-height: 1.6;
             font-size: 1.05rem;
         }
+        .chat-box{
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
     </style>
     <h1 class='main-title'>🌱 Sustainability Packaging Chatbot</h1>
     <div class='sub-header'>Expert insights on LCA, ESG reporting, and packaging sustainability</div>
     """, unsafe_allow_html=True)
 
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4 , tab5 = st.tabs([
         "💬 Chat",
         "📄 ESG Report Analyzer",
         "♻️ Score Calculator",
-        "🌍 Carbon Footprint Estimator"
+        "🌍 Carbon Footprint Estimator",
+        "📦 Material Indentifier"
     ])
 
     with st.sidebar:
@@ -215,7 +249,7 @@ def main():
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
-
+                
             conversation = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
 
             with st.chat_message("assistant"):
@@ -271,6 +305,47 @@ def main():
 
     with tab4:
         carbon_footprint_tab()
+    
+    with tab5:
+        st.subheader("♻️ Packaging Material Identifier")
+        st.markdown("Find the material of image just by uploading image.")
+        uploaded_file = st.file_uploader("📤 Upload Image", type="jpg")
+        if uploaded_file:
+            st.success(f"File uploaded: {uploaded_file.name}")
+            if st.button("🔍 Identify Material"):
+                with st.spinner("Analyzing image..."):
+                    # Placeholder for actual image processing logic
+                    st.markdown("### 🧠 AI Material Identification")
+                    st.markdown("<div class='result-box'>Material identification is under development.</div>", unsafe_allow_html=True)
+                    # upload_file_to_groq(uploaded_file)
+                    st.success("Image uploaded to Groq for processing. Results will be available soon.")
+                    # Getting the base64 string
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                        tmp_file.write(uploaded_file.getbuffer())
+                        temp_file_path = tmp_file.name
+
+                    base64_image = encode_image(temp_file_path)
+                    client = Groq(api_key=GROQ_API_KEY)
+
+                    chat_completion = client.chat.completions.create(
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": "What is the material of this packaging?"},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/jpeg;base64,{base64_image}",
+                                        },
+                                    },
+                                ],
+                            }
+                        ],
+                        model="meta-llama/llama-4-scout-17b-16e-instruct",
+                    )
+                    st.markdown("### 🧠 AI Material Identification Result")
+                    st.markdown(f"<div class='result-box'>{chat_completion.choices[0].message.content}</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

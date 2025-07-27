@@ -15,6 +15,18 @@ SYSTEM_PROMPT = (
     "clear explanations tailored to packaging solutions."
 )
 
+
+# Usage example
+api_key = os.environ.get("GROQ_API_KEY")
+file_path = "batch_file.jsonl"  # Path to your JSONL file
+
+try:
+    result = upload_file_to_groq(api_key, file_path)
+    print(result)
+except Exception as e:
+    print(f"Error: {e}")
+
+
 def validate_api_key():
     """Validate that the API key is available."""
     if not GROQ_API_KEY:
